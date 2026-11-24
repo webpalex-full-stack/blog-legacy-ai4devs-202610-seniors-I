@@ -1,5 +1,8 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
+import AccionProhibidaException from '#exceptions/accion_prohibida_exception'
+import EntradaInvalidaException from '#exceptions/entrada_invalida_exception'
+import RecursoNoEncontradoException from '#exceptions/recurso_no_encontrado_exception'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
   /**
@@ -13,6 +16,15 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * response to the client
    */
   async handle(error: unknown, ctx: HttpContext) {
+    if (error instanceof EntradaInvalidaException) {
+      return ctx.response.status(error.status).send(error.cuerpo)
+    }
+    if (
+      error instanceof RecursoNoEncontradoException ||
+      error instanceof AccionProhibidaException
+    ) {
+      return ctx.response.status(error.status).send({ error: error.message })
+    }
     return super.handle(error, ctx)
   }
 
