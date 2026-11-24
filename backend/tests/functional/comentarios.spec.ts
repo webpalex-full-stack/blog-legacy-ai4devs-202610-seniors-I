@@ -130,7 +130,10 @@ test.group('POST /posts/:slug/comentarios', (group) => {
     const despues = new Date().toISOString().slice(0, 19).replace('T', ' ')
     respuesta.assertStatus(201)
     const creadoEn = respuesta.body().comentario.creado_en
-    assert.isTrue(creadoEn >= antes && creadoEn <= despues, `${creadoEn} fuera de [${antes}, ${despues}]`)
+    assert.isTrue(
+      creadoEn >= antes && creadoEn <= despues,
+      `${creadoEn} fuera de [${antes}, ${despues}]`
+    )
   })
 
   test('guarda el padre_id que recibe', async ({ client, assert }) => {
@@ -521,7 +524,26 @@ test.group('PATCH /comentarios/:id', (group) => {
       creado_en: '2026-02-01 09:30:00',
       padre_id: null,
     })
-    assert.strictEqual((await buscarComentario(9101)).cuerpo, 'Cuerpo editado.')
+    const guardado = await buscarComentario(9101)
+    assert.strictEqual(guardado.cuerpo, 'Cuerpo editado.')
+  })
+
+  test('devuelve creado_en null si el comentario se guardó sin fecha', async ({
+    client,
+    assert,
+  }) => {
+    // Arrange
+    await db.table('posts').insert(unPost())
+    await db.table('comentarios').insert(unComentario({ creado_en: null }))
+
+    // Act
+    const respuesta = await client
+      .patch('/comentarios/9101')
+      .json({ autor_email: 'ana.cortes@ejemplo.es', cuerpo: 'Cuerpo editado.' })
+
+    // Assert
+    respuesta.assertStatus(200)
+    assert.isNull(respuesta.body().comentario.creado_en)
   })
 
   test('BUG CARACTERIZADO (hallazgo 10): acepta un cuerpo de menos de 5 caracteres', async ({
@@ -558,7 +580,8 @@ test.group('PATCH /comentarios/:id', (group) => {
     // Assert
     respuesta.assertStatus(403)
     respuesta.assertBody({ error: 'No puedes editar este comentario' })
-    assert.strictEqual((await buscarComentario(9101)).cuerpo, 'Un comentario ya guardado.')
+    const guardado = await buscarComentario(9101)
+    assert.strictEqual(guardado.cuerpo, 'Un comentario ya guardado.')
   })
 
   test('BUG CARACTERIZADO (hallazgo 9): la clave de moderación no sirve para editar', async ({
@@ -592,7 +615,8 @@ test.group('PATCH /comentarios/:id', (group) => {
     // Assert
     respuesta.assertStatus(403)
     respuesta.assertBody({ error: 'No puedes editar este comentario' })
-    assert.strictEqual((await buscarComentario(9101)).cuerpo, 'Un comentario ya guardado.')
+    const guardado = await buscarComentario(9101)
+    assert.strictEqual(guardado.cuerpo, 'Un comentario ya guardado.')
   })
 
   test('sin cuerpo devuelve 400 {error}', async ({ client, assert }) => {
@@ -608,7 +632,8 @@ test.group('PATCH /comentarios/:id', (group) => {
     // Assert
     respuesta.assertStatus(400)
     respuesta.assertBody({ error: 'Falta el cuerpo' })
-    assert.strictEqual((await buscarComentario(9101)).cuerpo, 'Un comentario ya guardado.')
+    const guardado = await buscarComentario(9101)
+    assert.strictEqual(guardado.cuerpo, 'Un comentario ya guardado.')
   })
 
   test('la autorización va antes que la validación del cuerpo', async ({ client }) => {
